@@ -1,69 +1,65 @@
 # SQLiHawk 🦅
 
-A lightweight, permission-first SQL injection signal detector for security testing. SQLiHawk checks URL query parameters for response differences that *may* indicate SQL injection. It is a triage aid, not proof of a vulnerability.
+SQLiHawk is a real HTTP-based, permission-first SQL injection signal detector. It sends a small, bounded set of query-parameter perturbations and compares the server responses. It is designed for authorized testing and triage—not exploitation.
 
-## Features
+## What it does
 
-- Query-parameter testing only; does not crawl or submit forms.
-- Explicit authorization acknowledgement required before requests are sent.
-- Low-impact boolean-difference checks and common database-error indicators.
-- Per-request timeout, configurable delay, and a clear request limit.
-- JSON report with tested URL, parameter, evidence, and confidence notes.
-- Unit tests that use mocked HTTP responses (no live target needed).
-- GitHub Actions test workflow.
+- Sends real HTTP requests to the supplied URL.
+- Checks existing query parameters using quote and boolean-style differential probes; numeric-looking values also receive numeric boolean probes.
+- Detects common database error messages that appear only after a parameter is changed.
+- Compares status codes and response bodies for true/false probe differences.
+- Does not follow redirects, reducing the chance of silently testing a different host.
+- Writes structured JSON evidence.
+- Requires an explicit authorization acknowledgement and limits URL parameters, timeout, and delay.
 
 ## Install
 
-Requires Python 3.10+.
+Python 3.10+ is required.
 
-```bash
+\`\`\`bash
+git clone https://github.com/hunterkritik-byte/SQLiHawk.git
+cd SQLiHawk
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-```
+\`\`\`
 
-On Windows, activate the environment with `.venv\\Scripts\\activate`.
+On Windows, activate with \`.venv\\\\Scripts\\\\activate\`.
 
-## Usage
+## Run
 
-Only test systems you own or have explicit written permission to assess.
+Only run against systems you own or have explicit written permission to test.
 
-```bash
-python sqlihawk.py --url "https://example.test/products?id=1" --i-have-permission
-```
+\`\`\`bash
+python sqlihawk.py --url "https://your-authorized-test-host.example/item?id=1" --i-have-permission --output report.json
+\`\`\`
 
-Write the report to a file:
+Tune request pacing:
 
-```bash
-python sqlihawk.py --url "https://example.test/products?id=1" --i-have-permission --output report.json
-```
+\`\`\`bash
+python sqlihawk.py --url "https://your-authorized-test-host.example/item?id=1" --i-have-permission --timeout 8 --delay 0.5 --output report.json
+\`\`\`
 
-Tune request timeout and pace:
+The URL must already contain query parameters. SQLiHawk does not crawl, submit forms, log in, or discover hidden parameters. Redirects are not followed. Keep tests within the target's written scope and rate limits.
 
-```bash
-python sqlihawk.py --url "https://example.test/products?id=1" --i-have-permission --timeout 8 --delay 0.5 --output report.json
-```
+## Results
 
-SQLiHawk only tests parameters already present in the supplied URL. Use a dedicated test environment whenever possible. The tool does not dump records, enumerate schemas, bypass authentication, or attempt stacked/destructive queries.
+- \`possible\`: one or more signals appeared. Reproduce safely and manually validate before reporting.
+- \`no_signal\`: these checks found no signal; the parameter may still be vulnerable.
+- \`error\`: the request failed or results are partial.
 
-## Interpreting results
+Database error evidence is stronger than a response difference alone. A difference between boolean probes can still be caused by dynamic content, caching, a WAF, or application logic. Treat results as leads, not confirmed findings.
 
-- `possible`: a response difference or database-style error was observed; manually validate safely.
-- `no_signal`: this run did not find the implemented signals. This does **not** prove the parameter is safe.
-- `error`: the request failed or could not be evaluated reliably.
+## Tests
 
-Response changes can be caused by WAFs, caching, unstable pages, application errors, or normal dynamic content. Review the evidence and reproduce manually before reporting a finding.
-
-## Development
-
-```bash
+\`\`\`bash
 python -m pip install -r requirements-dev.txt
 python -m unittest discover -s tests -v
-```
+\`\`\`
 
 ## Scope and safety
 
-Use only with authorization. You are responsible for complying with applicable law, program scope, and rate limits. Stop immediately if testing causes instability. SQLiHawk is intentionally a conservative signal detector, not an exploitation framework.
+SQLiHawk intentionally avoids data extraction, schema enumeration, authentication bypass, and destructive queries. It is a heuristic tool, so both false positives and false negatives are possible. No scanner can guarantee discovery of every SQL injection vulnerability.
 
 ## License
 
